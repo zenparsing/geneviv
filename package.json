@@ -1,0 +1,9 @@
+{
+  "name": "genevis",
+  "version": "0.0.1",
+  "type": "module",
+  "repository": "https://github.com/zenparsing/genevis",
+  "description": "A generator-observable mashup",
+  "homepage": "https://github.com/zenparsing/genevis",
+  "license": "MIT"
+}

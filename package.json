@@ -1,9 +1,9 @@
 {
-  "name": "genevis",
+  "name": "geneviv",
   "version": "0.0.1",
   "type": "module",
   "repository": "https://github.com/zenparsing/genevis",
-  "description": "A generator-observable mashup",
+  "description": "Generators are the new observables",
   "homepage": "https://github.com/zenparsing/genevis",
   "license": "MIT"
 }

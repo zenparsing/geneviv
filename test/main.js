@@ -1,4 +1,4 @@
-import { EventStream } from '../genevis.js';
+import { EventStream } from '../geneviv.js';
 
 import * as forEachTests from './forEach.js';
 import * as ofTests from './of.js';

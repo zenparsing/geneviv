@@ -1,7 +1,8 @@
 {
   "name": "geneviv",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
+  "main": "./geneviv.js",
   "repository": "https://github.com/zenparsing/genevis",
   "description": "Generators are the new observables",
   "homepage": "https://github.com/zenparsing/genevis",

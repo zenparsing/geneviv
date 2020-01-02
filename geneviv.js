@@ -1,3 +1,5 @@
+'use strict';
+
 const symbolFactory = new Proxy({}, {
   get(target, prop) { return Symbol(prop) }
 });
@@ -155,7 +157,7 @@ class Subscription {
 }
 
 
-export class EventStream {
+class EventStream {
 
   constructor(init) {
     validateFunction(init);
@@ -279,7 +281,7 @@ export class EventStream {
 }
 
 
-export class EventSource {
+class EventSource {
 
   constructor() {
     this[$observers] = new Set();
@@ -330,3 +332,5 @@ export class EventSource {
   }
 
 }
+
+module.exports = { EventStream, EventSource };

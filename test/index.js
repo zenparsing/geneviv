@@ -1,12 +1,13 @@
-import { EventStream } from '../geneviv.js';
+const lib = require('../');
+const assert = require('assert');
 
-import * as forEachTests from './forEach.js';
-import * as ofTests from './of.js';
-import * as fromTests from './from.js';
+const forEachTests = require('./forEach.js');
+const ofTests = require('./of.js');
+const fromTests = require('./from.js');
 
 async function testModule(mod) {
   for (let key of Object.keys(mod)) {
-    await mod[key](EventStream);
+    await mod[key](lib, assert);
   }
 }
 

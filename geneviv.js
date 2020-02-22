@@ -1,8 +1,10 @@
 'use strict';
 
-const symbolFactory = new Proxy({}, {
-  get(target, prop) { return Symbol(prop) }
-});
+function makeSymbols() {
+  return new Proxy({}, {
+    get(target, prop) { return Symbol(prop) }
+  });
+}
 
 function enqueueThrow(err) {
   setTimeout(() => { throw e }, 0);
@@ -14,7 +16,7 @@ function enqueue(fn) {
 
 function validateFunction(x) {
   if (typeof x !== 'function')
-    throw new TypeError(x + ' is not a function.');
+    throw new TypeError(`${ x } is not a function.`);
 }
 
 function getSpecies(obj, fallback) {
@@ -35,7 +37,7 @@ function getMethod(obj, key) {
     return undefined;
 
   if (typeof value !== 'function')
-    throw new TypeError(value + ' is not a function');
+    throw new TypeError(`${ value } is not a function`);
 
   return value;
 }
@@ -58,7 +60,7 @@ const {
   $isEventStream,
   $observers,
   $stream,
-} = symbolFactory;
+} = makeSymbols();
 
 
 class SubscriptionObserver {
@@ -236,7 +238,7 @@ class EventStream {
     let C = typeof this === 'function' ? this : EventStream;
 
     if (x == null)
-      throw new TypeError(x + ' is not an object');
+      throw new TypeError(`${ x } is not an object`);
 
     if (x[$isEventStream] && x.constructor === C)
       return x;
@@ -275,7 +277,7 @@ class EventStream {
       });
     }
 
-    throw new TypeError(x + ' cannot be converted to an EventStream');
+    throw new TypeError(`${ x } cannot be converted to an EventStream`);
   }
 
 }

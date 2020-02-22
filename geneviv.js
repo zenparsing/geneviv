@@ -7,7 +7,7 @@ function makeSymbols() {
 }
 
 function enqueueThrow(err) {
-  setTimeout(() => { throw e }, 0);
+  setTimeout(() => { throw err }, 0);
 }
 
 function enqueue(fn) {

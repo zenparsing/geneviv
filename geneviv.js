@@ -1,5 +1,18 @@
 'use strict';
 
+
+const messages = {
+  invalidSubscriptionState: state =>
+    `Observer cannot be notified when subscription is ${ state }`,
+  notFunction: x =>
+    `${ x } is not a function`,
+  notObject: x =>
+    `${ x } is not an object`,
+  notEventStream: x =>
+    `${ x } cannot be converted to an EventStream`,
+};
+
+
 function makeSymbols() {
   return new Proxy({}, {
     get(target, prop) { return Symbol(prop) }
@@ -16,7 +29,7 @@ function enqueue(fn) {
 
 function validateFunction(x) {
   if (typeof x !== 'function')
-    throw new TypeError(`${ x } is not a function.`);
+    throw new TypeError(messages.notFunction(x));
 }
 
 function getSpecies(obj, fallback) {
@@ -36,9 +49,7 @@ function getMethod(obj, key) {
   if (value == null)
     return undefined;
 
-  if (typeof value !== 'function')
-    throw new TypeError(`${ value } is not a function`);
-
+  validateFunction(value);
   return value;
 }
 
@@ -63,6 +74,9 @@ const {
 } = makeSymbols();
 
 
+// A generator provided to the producer that forwards events to the
+// underlying subscription and provides information on the current
+// state of the subscription
 class SubscriptionObserver {
   constructor(subscription) { this[$subscription] = subscription }
   get done() { return this[$subscription].isClosed() }
@@ -72,6 +86,7 @@ class SubscriptionObserver {
 }
 
 
+// Represents the current state of an event stream subscription
 class Subscription {
 
   constructor(observer, init) {
@@ -84,10 +99,12 @@ class Subscription {
 
     let subscriptionObserver = new SubscriptionObserver(this);
 
+    // DESIGN: How should we propagate exceptions?
     try {
       this._onComplete = init.call(undefined, subscriptionObserver);
     } catch (e) {
-      subscriptionObserver.throw(e);
+      this._state = 'closed';
+      enqueueThrow(e);
     }
 
     if (this._state === 'initializing')
@@ -107,8 +124,14 @@ class Subscription {
     if (this._state === 'closed')
       return { done: true };
 
+    // DESIGN: Should we queue instead? Are there any other
+    // designs that would sidestep this issue but still allow
+    // notifications immediately after calling init? The only
+    // other real option is to deliver events asynchronously,
+    // which would invalidate this abstraction for DOM event
+    // use cases.
     if (this._state !== 'ready')
-      throw new Error(`Observer cannot be notified when subscription is ${ this._state }`);
+      throw new Error(messages.invalidSubscriptionState(this._state));
 
     this._state = 'running';
 
@@ -201,6 +224,8 @@ class EventStream {
     let C = getSpecies(this, EventStream);
 
     return new C(observer => this.listen(value => {
+      // DESIGN: Should we be rerouting these errors? Do they
+      // conceptually come from the "producer"?
       try { value = fn(value) }
       catch (e) { return observer.throw(e) }
       observer.next(value);
@@ -238,7 +263,7 @@ class EventStream {
     let C = typeof this === 'function' ? this : EventStream;
 
     if (x == null)
-      throw new TypeError(`${ x } is not an object`);
+      throw new TypeError(messages.notObject(x));
 
     if (x[$isEventStream] && x.constructor === C)
       return x;
@@ -268,6 +293,8 @@ class EventStream {
       return new C(observer => {
         enqueue(() => {
           if (observer.done) return;
+          // DESIGN: Should we reroute errors to the consumer
+          // if iteration throws?
           for (let item of method.call(x)) {
             observer.next(item);
             if (observer.done) return;
@@ -277,7 +304,7 @@ class EventStream {
       });
     }
 
-    throw new TypeError(`${ x } cannot be converted to an EventStream`);
+    throw new TypeError(messages.notEventStream(x));
   }
 
 }

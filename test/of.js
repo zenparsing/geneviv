@@ -1,4 +1,4 @@
-module.exports = new class {
+module.exports = {
 
   async testBasics({ EventStream }, assert) {
     let list = [];
@@ -6,7 +6,7 @@ module.exports = new class {
     assert.deepStrictEqual(list, []);
     await null;
     assert.deepStrictEqual(list, [1, 2, 3]);
-  }
+  },
 
   async testCancel({ EventStream }, assert) {
     let list = [];
@@ -15,6 +15,6 @@ module.exports = new class {
     cancel();
     await null;
     assert.deepStrictEqual(list, []);
-  }
+  },
 
 };

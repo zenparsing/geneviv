@@ -1,4 +1,4 @@
-module.exports = new class {
+module.exports = {
 
   async testBasics({ EventStream }, assert) {
     let stream = new EventStream(observer => {
@@ -18,7 +18,7 @@ module.exports = new class {
 
     assert.deepStrictEqual(list, [1, 2, 3]);
     assert.strictEqual(end, 4);
-  }
+  },
 
   async testEarlyDone({ EventStream }, assert) {
     let stream = new EventStream(observer => {
@@ -39,6 +39,6 @@ module.exports = new class {
 
     assert.deepStrictEqual(list, [1]);
     assert.strictEqual(end, 0);
-  }
+  },
 
 };

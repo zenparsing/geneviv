@@ -63,8 +63,8 @@ const {
   $initFunction,
   $isEventStream,
   $observers,
-  $cancelFunctions,
-  $stream } = makeSymbols();
+  $listeners,
+  $isClosed } = makeSymbols();
 
 
 // A generator provided to the producer that forwards events to the
@@ -295,19 +295,28 @@ class EventStream {
 class EventSource {
 
   constructor() {
+    this[$isClosed] = false;
+    this[$listeners] = new Map();
     this[$observers] = new Set();
-    this[$stream] = new EventStream(observer => {
-      this[$observers].add(observer);
-      return () => this[$observers].delete(observer);
-    });
   }
 
-  listen(observer) {
-    // TODO: If the same observer is supplied we should probably
-    // not create a new subscription. We should instead return
-    // the cancel function for the current active subscription.
-    if (this[$stream]) return this[$stream].listen(observer);
-    else return () => {};
+  listen(listener) {
+    if (this[$isClosed]) return () => {};
+
+    let cancel = this[$listeners].get(listener);
+    if (cancel) return cancel;
+
+    let stream = new EventStream(observer => {
+      this[$observers].add(observer);
+      return () => {
+        this[$observers].delete(observer);
+        this[$listeners].delete(listener);
+      };
+    });
+
+    cancel = stream.listen(listener);
+    this[$listeners].set(listener, cancel);
+    return cancel;
   }
 
   next(value) {
@@ -322,7 +331,7 @@ class EventSource {
   }
 
   throw(value) {
-    this[$stream] = undefined;
+    this[$isClosed] = true;
     for (let observer of this[$observers]) {
       try {
         observer.throw(value);
@@ -334,7 +343,7 @@ class EventSource {
   }
 
   return(value) {
-    this[$stream] = undefined;
+    this[$isClosed] = true;
     for (let observer of this[$observers]) {
       try {
         observer.return(value);

@@ -1,4 +1,4 @@
-module.exports = new class {
+module.exports = {
 
   async testEventStream({ EventStream }, assert) {
     let stream = new EventStream(observer => {
@@ -6,7 +6,7 @@ module.exports = new class {
       observer.return();
     });
     assert.strictEqual(EventStream.from(stream), stream);
-  }
+  },
 
   async testAsyncIterable({ EventStream }, assert) {
     async function* ag() {
@@ -21,7 +21,7 @@ module.exports = new class {
     EventStream.from(ag()).listen(value => list.push(value));
     await new Promise(r => setTimeout(r, 0));
     assert.deepStrictEqual(list, [1, 2]);
-  }
+  },
 
   async testIterable({ EventStream }, assert) {
     function* ag() {
@@ -34,10 +34,10 @@ module.exports = new class {
     EventStream.from(ag()).listen(value => list.push(value));
     await null;
     assert.deepStrictEqual(list, [1, 2]);
-  }
+  },
 
   async testNoConversion({ EventStream }, assert) {
     assert.throws(() => EventStream.from({}), TypeError);
-  }
+  },
 
 };

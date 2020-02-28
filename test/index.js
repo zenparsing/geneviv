@@ -15,7 +15,6 @@ async function main() {
   await testModule(forEachTests);
   await testModule(ofTests);
   await testModule(fromTests);
-  console.log('OK');
 }
 
 main().catch(err => {

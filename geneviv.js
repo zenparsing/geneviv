@@ -1,6 +1,8 @@
 'use strict';
 
 
+// == Error messages ==
+
 const messages = {
   invalidSubscriptionState: state =>
     `Observer cannot be notified when subscription is ${ state }`,
@@ -12,6 +14,7 @@ const messages = {
     `${ x } cannot be converted to an EventStream`,
 };
 
+// == Utility Functions ==
 
 function makeSymbols() {
   return new Proxy({}, {
@@ -53,25 +56,15 @@ function getMethod(obj, key) {
   return value;
 }
 
-const functionToObserverMap = new WeakMap();
-
-function functionToObserver(fn) {
-  let observer = functionToObserverMap.get(fn);
-  if (!observer) {
-    observer = { next: fn };
-    functionToObserverMap.set(fn, observer);
-  }
-  return observer;
-}
-
+// == Symbols ==
 
 const {
   $subscription,
   $initFunction,
   $isEventStream,
   $observers,
-  $stream,
-} = makeSymbols();
+  $cancelFunctions,
+  $stream } = makeSymbols();
 
 
 // A generator provided to the producer that forwards events to the
@@ -86,12 +79,12 @@ class SubscriptionObserver {
 }
 
 
-// Represents the current state of an event stream subscription
+// An internal representation of the current state of an event stream
 class Subscription {
 
   constructor(observer, init) {
     if (typeof observer === 'function')
-      observer = functionToObserver(observer);
+      observer = { next: observer };
 
     this._onComplete = undefined;
     this._observer = observer;
@@ -99,12 +92,11 @@ class Subscription {
 
     let subscriptionObserver = new SubscriptionObserver(this);
 
-    // DESIGN: How should we propagate exceptions?
     try {
       this._onComplete = init.call(undefined, subscriptionObserver);
     } catch (e) {
       this._state = 'closed';
-      enqueueThrow(e);
+      throw e;
     }
 
     if (this._state === 'initializing')
@@ -124,12 +116,6 @@ class Subscription {
     if (this._state === 'closed')
       return { done: true };
 
-    // DESIGN: Should we queue instead? Are there any other
-    // designs that would sidestep this issue but still allow
-    // notifications immediately after calling init? The only
-    // other real option is to deliver events asynchronously,
-    // which would invalidate this abstraction for DOM event
-    // use cases.
     if (this._state !== 'ready')
       throw new Error(messages.invalidSubscriptionState(this._state));
 
@@ -224,8 +210,6 @@ class EventStream {
     let C = getSpecies(this, EventStream);
 
     return new C(observer => this.listen(value => {
-      // DESIGN: Should we be rerouting these errors? Do they
-      // conceptually come from the "producer"?
       try { value = fn(value) }
       catch (e) { return observer.throw(e) }
       observer.next(value);
@@ -293,8 +277,6 @@ class EventStream {
       return new C(observer => {
         enqueue(() => {
           if (observer.done) return;
-          // DESIGN: Should we reroute errors to the consumer
-          // if iteration throws?
           for (let item of method.call(x)) {
             observer.next(item);
             if (observer.done) return;
@@ -321,6 +303,9 @@ class EventSource {
   }
 
   listen(observer) {
+    // TODO: If the same observer is supplied we should probably
+    // not create a new subscription. We should instead return
+    // the cancel function for the current active subscription.
     if (this[$stream]) return this[$stream].listen(observer);
     else return () => {};
   }
@@ -361,5 +346,6 @@ class EventSource {
   }
 
 }
+
 
 module.exports = { EventStream, EventSource };

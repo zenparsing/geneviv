@@ -1,10 +1,11 @@
 const lib = require('../');
 const assert = require('assert');
 
-const forEachTests = require('./forEach.js');
+const forEachTests = require('./for-each.js');
 const ofTests = require('./of.js');
 const fromTests = require('./from.js');
-const eventSourceTests = require('./eventSource.js');
+const eventSourceTests = require('./event-source.js');
+const forAwaitTests = require('./for-await.js');
 
 async function testModule(name, mod) {
   for (let key of Object.keys(mod)) {
@@ -19,6 +20,7 @@ async function main() {
   await testModule('of', ofTests);
   await testModule('from', fromTests);
   await testModule('EventSource', eventSourceTests);
+  await testModule('for await', forAwaitTests);
 }
 
 main().catch(err => {

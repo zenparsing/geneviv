@@ -56,6 +56,15 @@ function getMethod(obj, key) {
   return value;
 }
 
+function makeResolver() {
+  let resolver = {};
+  resolver.promise = new Promise((resolve, reject) => {
+    resolver.resolve = resolve;
+    resolver.reject = reject;
+  });
+  return resolver;
+}
+
 // == Symbols ==
 
 const {
@@ -226,6 +235,38 @@ class EventStream {
       catch (e) { return observer.throw(e) }
       observer.next(value);
     }));
+  }
+
+  [Symbol.asyncIterator]() {
+    let resolver = makeResolver();
+
+    let cancel = this.listen({
+      next(value) {
+        resolver.resolve({ value, done: false });
+        resolver = makeResolver();
+      },
+      throw(value) {
+        resolver.reject(value);
+        resolver = makeResolver();
+      },
+      return(value) {
+        resolver.resolve({ value, done: true });
+      },
+    });
+
+    return {
+      next() {
+        return resolver.promise;
+      },
+      async throw(error) {
+        cancel();
+        throw error;
+      },
+      async return(value) {
+        cancel();
+        return value;
+      },
+    };
   }
 
   static of(...items) {

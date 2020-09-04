@@ -225,7 +225,7 @@ class EventSource {
 }
 
 
-class EventStream {
+export class EventStream {
 
   constructor(init) {
     validateFunction(init);
@@ -393,5 +393,3 @@ class EventStream {
   }
 
 }
-
-module.exports = { EventStream };

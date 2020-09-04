@@ -1,4 +1,4 @@
-module.exports = {
+export const tests = {
 
   async testEventStream({ EventStream }, assert) {
     let stream = new EventStream(observer => {

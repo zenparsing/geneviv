@@ -1,4 +1,4 @@
-module.exports = {
+export const tests = {
 
   async testBasics({ EventStream }, assert) {
     let list = [];

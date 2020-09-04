@@ -1,11 +1,11 @@
-const lib = require('../');
-const assert = require('assert');
+import * as lib from '../geneviv.js';
+import * as assert from 'assert';
 
-const forEachTests = require('./for-each.js');
-const ofTests = require('./of.js');
-const fromTests = require('./from.js');
-const eventSourceTests = require('./event-source.js');
-const forAwaitTests = require('./for-await.js');
+import { tests as forEachTests } from './for-each.js';
+import { tests as ofTests } from './of.js';
+import { tests as fromTests } from './from.js';
+import { tests as eventSourceTests } from './event-source.js';
+import { tests as forAwaitTests } from './for-await.js';
 
 async function testModule(name, mod) {
   for (let key of Object.keys(mod)) {

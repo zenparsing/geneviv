@@ -5,6 +5,8 @@ A new take on Observables using the generator interface as a core design abstrac
 ## Example
 
 ```js
+import { EventStream } from 'geneviv';
+
 // Create an event stream that will send some number values
 const stream = new EventStream(observer => {
   console.log('A new listener has been attached.');

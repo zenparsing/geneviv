@@ -1,11 +1,11 @@
 module.exports = {
 
-  async testBasics({ EventSource }, assert) {
-    let source = new EventSource();
+  async testBasics({ EventStream }, assert) {
+    let { source, stream } = EventStream.createSource();
     let values = [];
 
-    let cancelA = source.listen(value => values.push(`a-${ value }`));
-    let cancelB = source.listen(value => values.push(`b-${ value }`));
+    let cancelA = stream.listen(value => values.push(`a-${ value }`));
+    let cancelB = stream.listen(value => values.push(`b-${ value }`));
 
     source.next(1);
     assert.deepEqual(values, ['a-1', 'b-1']);
@@ -20,26 +20,5 @@ module.exports = {
     source.next(3);
     assert.deepEqual(values, []);
   },
-
-  async testDuplicateListeners({ EventSource }, assert) {
-    let source = new EventSource();
-    let values = [];
-    let listener = value => values.push(value);
-    let cancel1 = source.listen(listener);
-    let cancel2 = source.listen(listener);
-
-    assert.strictEqual(cancel1, cancel2);
-
-    source.next(1);
-    source.next(2);
-
-    assert.deepEqual(values, [1, 2]);
-
-    values = [];
-    cancel1();
-
-    source.next(3);
-    assert.deepEqual(values, []);
-  }
 
 };

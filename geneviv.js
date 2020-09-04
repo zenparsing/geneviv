@@ -72,8 +72,7 @@ const {
   $initFunction,
   $isEventStream,
   $observers,
-  $listeners,
-  $isClosed } = makeSymbols();
+  $isDone } = makeSymbols();
 
 
 // A generator provided to the producer that forwards events to the
@@ -172,6 +171,55 @@ class Subscription {
 
     this._onComplete = undefined;
     onComplete();
+  }
+
+}
+
+
+class EventSource {
+
+  constructor(observers) {
+    this[$observers] = observers;
+    this[$isDone] = false;
+  }
+
+  get done() {
+    return this[$isDone];
+  }
+
+  next(value) {
+    for (let observer of this[$observers]) {
+      try {
+        observer.next(value);
+      } catch (err) {
+        enqueueThrow(err);
+      }
+    }
+    return { done: false };
+  }
+
+  throw(value) {
+    this[$isDone] = true;
+    for (let observer of this[$observers]) {
+      try {
+        observer.throw(value);
+      } catch (err) {
+        enqueueThrow(err);
+      }
+    }
+    return { done: true };
+  }
+
+  return(value) {
+    this[$isDone] = true;
+    for (let observer of this[$observers]) {
+      try {
+        observer.return(value);
+      } catch (err) {
+        enqueueThrow(err);
+      }
+    }
+    return { done: true };
   }
 
 }
@@ -330,72 +378,20 @@ class EventStream {
     throw new TypeError(messages.notEventStream(x));
   }
 
-}
+  static createSource() {
+    let observers = new Set();
 
-
-class EventSource {
-
-  constructor() {
-    this[$isClosed] = false;
-    this[$listeners] = new Map();
-    this[$observers] = new Set();
-  }
-
-  listen(listener) {
-    if (this[$isClosed]) return () => {};
-
-    let cancel = this[$listeners].get(listener);
-    if (cancel) return cancel;
+    let source = new EventSource(observers);
 
     let stream = new EventStream(observer => {
-      this[$observers].add(observer);
-      return () => {
-        this[$observers].delete(observer);
-        this[$listeners].delete(listener);
-      };
+      observers.add(observer);
+      if (source.done) enqueue(() => { observer.return() });
+      return () => { observers.delete(observer) };
     });
 
-    cancel = stream.listen(listener);
-    this[$listeners].set(listener, cancel);
-    return cancel;
-  }
-
-  next(value) {
-    for (let observer of this[$observers]) {
-      try {
-        observer.next(value);
-      } catch (err) {
-        enqueueThrow(err);
-      }
-    }
-    return { done: false };
-  }
-
-  throw(value) {
-    this[$isClosed] = true;
-    for (let observer of this[$observers]) {
-      try {
-        observer.throw(value);
-      } catch (err) {
-        enqueueThrow(err);
-      }
-    }
-    return { done: true };
-  }
-
-  return(value) {
-    this[$isClosed] = true;
-    for (let observer of this[$observers]) {
-      try {
-        observer.return(value);
-      } catch (err) {
-        enqueueThrow(err);
-      }
-    }
-    return { done: true };
+    return { source, stream };
   }
 
 }
 
-
-module.exports = { EventStream, EventSource };
+module.exports = { EventStream };

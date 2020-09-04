@@ -1,11 +1,11 @@
 # geneviv
 
-A new take on Observables using generator as a core design abstraction.
+A new take on Observables using the generator interface as a core design abstraction.
 
 ## Example
 
 ```js
-// Create an event stream that will send some number values:
+// Create an event stream that will send some number values
 const stream = new EventStream(observer => {
   console.log('A new listener has been attached.');
 
@@ -29,11 +29,8 @@ const stream = new EventStream(observer => {
   };
 });
 
-// Filter the stream and attach a listener function:
-stream.map(value => value * 2).forEach(value => {
+// Filter the stream and attach a listener function
+stream.map(value => value * 2).listen(value => {
   console.log(`Next value is: ${ value }`);
-}).then(() => {
-  // forEach returns a promise for the end of the stream
-  console.log('The stream has ended');
 });
 ```

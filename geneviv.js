@@ -1,6 +1,3 @@
-'use strict';
-
-
 // == Error messages ==
 
 const messages = {

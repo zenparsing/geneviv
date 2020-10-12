@@ -11,7 +11,7 @@ import { EventStream } from 'geneviv';
 const stream = new EventStream(observer => {
   console.log('A new listener has been attached.');
 
-  Promise.resolve().then(async () => {
+  queueMicrotask(async function() {
     // Send some values to the listener. Note that we must
     // send values in a future turn of the event loop; the
     // event stream is not yet active when the init function
@@ -31,7 +31,7 @@ const stream = new EventStream(observer => {
   };
 });
 
-// Filter the stream and attach a listener function
+// Transform the stream and attach a listener
 stream.map(value => value * 2).listen(value => {
   console.log(`Next value is: ${ value }`);
 });

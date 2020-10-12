@@ -19,12 +19,17 @@ function makeSymbols() {
   });
 }
 
-function enqueueThrow(err) {
-  setTimeout(() => { throw err }, 0);
+function enqueue(fn) {
+  Promise.resolve().then(() => fn()).catch((err) => {
+    setTimeout(() => { throw err }, 0);
+  });
 }
 
-function enqueue(fn) {
-  Promise.resolve().then(() => fn()).catch(enqueueThrow);
+if (typeof queueMicrotask === 'function')
+  enqueue = queueMicrotask;
+
+function enqueueThrow(err) {
+  enqueue(() => { throw err });
 }
 
 function validateFunction(x) {
@@ -375,7 +380,7 @@ export class EventStream {
     throw new TypeError(messages.notEventStream(x));
   }
 
-  static createSource() {
+  static source() {
     let observers = new Set();
 
     let source = new EventSource(observers);

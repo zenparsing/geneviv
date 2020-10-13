@@ -1,6 +1,6 @@
 {
   "name": "geneviv",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "main": "./geneviv.js",
   "type": "module",
   "repository": "https://github.com/zenparsing/geneviv",

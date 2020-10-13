@@ -178,7 +178,7 @@ class Subscription {
 }
 
 
-class EventSource {
+class EventStreamSource {
 
   constructor(observers) {
     this[$observers] = observers;
@@ -383,7 +383,7 @@ export class EventStream {
   static source() {
     let observers = new Set();
 
-    let source = new EventSource(observers);
+    let source = new EventStreamSource(observers);
 
     let stream = new EventStream(observer => {
       observers.add(observer);

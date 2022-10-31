@@ -1,10 +1,18 @@
 {
   "name": "geneviv",
-  "version": "0.0.7",
-  "main": "./geneviv.js",
+  "version": "0.1.0",
   "type": "module",
+  "exports": "./geneviv.js",
   "repository": "https://github.com/zenparsing/geneviv",
   "description": "Generators are the new observables",
   "homepage": "https://github.com/zenparsing/geneviv",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.26.0"
+  },
+  "scripts": {
+    "test": "node ./test",
+    "lint": "eslint *.js test/*.js",
+    "prepublishOnly": "npm run lint && npm test"
+  }
 }

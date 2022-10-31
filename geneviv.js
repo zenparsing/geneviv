@@ -2,7 +2,7 @@
 
 const messages = {
   invalidSubscriptionState: state =>
-    `Observer cannot be notified when subscription is ${ state }`,
+    `listener cannot be notified when subscription is ${ state }`,
   notFunction: x =>
     `${ x } is not a function`,
   notObject: x =>
@@ -15,18 +15,19 @@ const messages = {
 
 function makeSymbols() {
   return new Proxy({}, {
-    get(target, prop) { return Symbol(prop) }
+    get(target, prop) { return Symbol(prop) },
   });
 }
 
-function enqueue(fn) {
+function enqueueTask(fn) {
   Promise.resolve().then(() => fn()).catch((err) => {
     setTimeout(() => { throw err }, 0);
   });
 }
 
-if (typeof queueMicrotask === 'function')
-  enqueue = queueMicrotask;
+const enqueue = typeof queueMicrotask === 'function'
+  ? queueMicrotask
+  : enqueueTask;
 
 function enqueueThrow(err) {
   enqueue(() => { throw err });
@@ -70,40 +71,28 @@ function makeResolver() {
 // == Symbols ==
 
 const {
-  $subscription,
   $initFunction,
   $isEventStream,
-  $observers,
+  $listeners,
   $isDone } = makeSymbols();
 
-
-// A generator provided to the producer that forwards events to the
-// underlying subscription and provides information on the current
-// state of the subscription
-class SubscriptionObserver {
-  constructor(subscription) { this[$subscription] = subscription }
-  get done() { return this[$subscription].isClosed() }
-  next(value) { return this[$subscription].forward('next', value) }
-  throw(value) { return this[$subscription].forward('throw', value) }
-  return(value) { return this[$subscription].forward('return', value) }
-}
-
-
-// An internal representation of the current state of an event stream
+// An internal representation of the current state of an event stream.
 class Subscription {
 
-  constructor(observer, init) {
-    if (typeof observer === 'function')
-      observer = { next: observer };
+  constructor(listener, init) {
+    if (typeof listener === 'function')
+      listener = { next: listener };
 
     this._onComplete = undefined;
-    this._observer = observer;
+    this._listener = listener;
     this._state = 'initializing';
 
-    let subscriptionObserver = new SubscriptionObserver(this);
-
     try {
-      this._onComplete = init.call(undefined, subscriptionObserver);
+      this._onComplete = init.call(undefined, {
+        next: value => this._forward('next', value),
+        throw: value => this._forward('throw', value),
+        return: value => this._forward('return', value),
+      });
     } catch (e) {
       this._state = 'closed';
       throw e;
@@ -113,16 +102,12 @@ class Subscription {
       this._state = 'ready';
   }
 
-  isClosed() {
-    return this._state === 'closed';
-  }
-
   cancel() {
     if (this._state === 'running') this._close();
-    else this.forward('return');
+    else this._forward('return');
   }
 
-  forward(type, value) {
+  _forward(type, value) {
     if (this._state === 'closed')
       return { done: true };
 
@@ -131,22 +116,22 @@ class Subscription {
 
     this._state = 'running';
 
-    let observer = this._observer;
-    let method = getMethod(observer, type);
+    let listener = this._listener;
+    let method = getMethod(listener, type);
     let result = undefined;
 
     switch (type) {
       case 'next':
-        if (method) result = method.call(observer, value);
+        if (method) result = method.call(listener, value);
         break;
       case 'throw':
         this._close();
-        if (method) result = method.call(observer, value);
+        if (method) result = method.call(listener, value);
         else throw value;
         break;
       case 'return':
         this._close();
-        if (method) result = method.call(observer, value);
+        if (method) result = method.call(listener, value);
         break;
     }
 
@@ -162,7 +147,7 @@ class Subscription {
   }
 
   _close() {
-    this._observer = undefined;
+    this._listener = undefined;
     this._state = 'closed';
   }
 
@@ -177,11 +162,10 @@ class Subscription {
 
 }
 
-
 class EventStreamSource {
 
-  constructor(observers) {
-    this[$observers] = observers;
+  constructor(listeners) {
+    this[$listeners] = listeners;
     this[$isDone] = false;
   }
 
@@ -190,9 +174,9 @@ class EventStreamSource {
   }
 
   next(value) {
-    for (let observer of this[$observers]) {
+    for (let listener of this[$listeners]) {
       try {
-        observer.next(value);
+        listener.next(value);
       } catch (err) {
         enqueueThrow(err);
       }
@@ -202,9 +186,9 @@ class EventStreamSource {
 
   throw(value) {
     this[$isDone] = true;
-    for (let observer of this[$observers]) {
+    for (let listener of this[$listeners]) {
       try {
-        observer.throw(value);
+        listener.throw(value);
       } catch (err) {
         enqueueThrow(err);
       }
@@ -214,9 +198,9 @@ class EventStreamSource {
 
   return(value) {
     this[$isDone] = true;
-    for (let observer of this[$observers]) {
+    for (let listener of this[$listeners]) {
       try {
-        observer.return(value);
+        listener.return(value);
       } catch (err) {
         enqueueThrow(err);
       }
@@ -226,7 +210,6 @@ class EventStreamSource {
 
 }
 
-
 export class EventStream {
 
   constructor(init) {
@@ -235,8 +218,8 @@ export class EventStream {
     this[$isEventStream] = true;
   }
 
-  listen(observer) {
-    let subscription = new Subscription(observer, this[$initFunction]);
+  listen(listener) {
+    let subscription = new Subscription(listener, this[$initFunction]);
     return () => { subscription.cancel() };
   }
 
@@ -268,10 +251,10 @@ export class EventStream {
 
     let C = getSpecies(this, EventStream);
 
-    return new C(observer => this.listen(value => {
+    return new C(listener => this.listen(value => {
       try { value = fn(value) }
-      catch (e) { return observer.throw(e) }
-      observer.next(value);
+      catch (e) { return listener.throw(e) }
+      listener.next(value);
     }));
   }
 
@@ -280,10 +263,10 @@ export class EventStream {
 
     let C = getSpecies(this, EventStream);
 
-    return new C(observer => this.listen(value => {
+    return new C(listener => this.listen(value => {
       try { if (!fn(value)) return; }
-      catch (e) { return observer.throw(e) }
-      observer.next(value);
+      catch (e) { return listener.throw(e) }
+      listener.next(value);
     }));
   }
 
@@ -322,15 +305,17 @@ export class EventStream {
   static of(...items) {
     let C = typeof this === 'function' ? this : EventStream;
 
-    return new C(observer => {
+    return new C(listener => {
+      let done = false;
       enqueue(() => {
-        if (observer.done) return;
+        if (done) return;
         for (let i = 0; i < items.length; ++i) {
-          observer.next(items[i]);
-          if (observer.done) return;
+          listener.next(items[i]);
+          if (done) return;
         }
-        observer.return();
+        listener.return();
       });
+      return () => { done = true };
     });
   }
 
@@ -347,33 +332,37 @@ export class EventStream {
 
     method = x.listen;
     if (typeof method === 'function')
-      return new C(observer => method.call(x, observer));
+      return new C(listener => method.call(x, listener));
 
     method = x[Symbol.asyncIterator];
     if (method) {
-      return new C(observer => {
-        enqueue(async () => {
-          if (observer.done) return;
+      return new C(listener => {
+        let done = false;
+        enqueue(async() => {
+          if (done) return;
           for await (let item of method.call(x)) {
-            observer.next(item);
-            if (observer.done) return;
+            listener.next(item);
+            if (done) return;
           }
-          observer.return();
+          listener.return();
         });
+        return () => { done = true };
       });
     }
 
     method = x[Symbol.iterator];
     if (method) {
-      return new C(observer => {
+      return new C(listener => {
+        let done = false;
         enqueue(() => {
-          if (observer.done) return;
+          if (done) return;
           for (let item of method.call(x)) {
-            observer.next(item);
-            if (observer.done) return;
+            listener.next(item);
+            if (done) return;
           }
-          observer.return();
+          listener.return();
         });
+        return () => { done = true };
       });
     }
 
@@ -381,17 +370,14 @@ export class EventStream {
   }
 
   static source() {
-    let observers = new Set();
-
-    let source = new EventStreamSource(observers);
-
-    let stream = new EventStream(observer => {
-      observers.add(observer);
-      if (source.done) enqueue(() => { observer.return() });
-      return () => { observers.delete(observer) };
+    let listeners = new Set();
+    let source = new EventStreamSource(listeners);
+    let stream = new EventStream(listener => {
+      listeners.add(listener);
+      if (source.done) enqueue(() => { listener.return() });
+      return () => { listeners.delete(listener) };
     });
-
-    return { source, stream };
+    return [source, stream];
   }
 
 }

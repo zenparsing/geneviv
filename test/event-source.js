@@ -1,7 +1,7 @@
 export const tests = {
 
   async testBasics({ EventStream }, assert) {
-    let { source, stream } = EventStream.source();
+    let [source, stream] = EventStream.source();
     let values = [];
 
     let cancelA = stream.listen(value => values.push(`a-${ value }`));
